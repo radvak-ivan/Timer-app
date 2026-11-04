@@ -1,68 +1,74 @@
-// Generated beeps via the Web Audio API, so no audio files are needed.
+// Beep sounds for the timer.
 //
-// Mobile quirks handled here:
-// - Audio must be started from a user tap, so unlock() is called on Start and other taps.
-// - iOS silences Web Audio when the ring/silent switch is on. Declaring a "playback"
-//   audio session (iOS 17+), or playing a silent <audio> element on older iOS, moves
-//   the page into the media category so beeps play even in silent mode.
-// - iOS/Android can suspend the AudioContext (calls, backgrounding); it is resumed
-//   before each beep and on every tap.
+// The beeps are synthesised in JavaScript into small WAV clips and played through
+// <audio> elements, the same way music or video plays. On iPhone this matters:
+// Safari mutes Web Audio when the ring/silent switch is on, but media playback
+// still plays (at media volume).
+//
+// iOS only lets an <audio> element play from code after it has played once
+// during a user tap, so unlock() must be called from a tap (Start, mute button).
 
 const MUTE_KEY = 'timer.muted';
+const SAMPLE_RATE = 44100;
 const VOLUME = 0.9;
 
-const isIOS =
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Each sound is a list of tones: [frequency Hz, duration ms, start offset ms].
+const SOUNDS = {
+  countdown: [[880, 160, 0]],
+  work: [[1320, 600, 0]],
+  rest: [
+    [988, 250, 0],
+    [740, 400, 300],
+  ],
+  finish: [
+    [988, 200, 0],
+    [1175, 200, 240],
+    [1568, 600, 480],
+  ],
+};
 
 export class Sound {
   constructor() {
-    this.ctx = null;
-    this.master = null;
-    this.keepAlive = null;
     this.muted = readMuted();
+    this.players = {};
+    this.unlocked = false;
+    for (const [name, tones] of Object.entries(SOUNDS)) {
+      const el = new Audio(wavUrl(renderTones(tones)));
+      el.preload = 'auto';
+      el.setAttribute('playsinline', '');
+      this.players[name] = el;
+    }
   }
 
-  /** Call from a user gesture (tap). Safe to call repeatedly. */
+  /** Call from a user tap. Plays every clip silently once so iOS allows later playback. */
   unlock() {
-    setPlaybackSession();
-
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      this.ctx = new AudioCtx();
-      // A compressor lets the beeps be loud on small phone speakers without clipping.
-      this.master = this.ctx.createDynamicsCompressor();
-      this.master.connect(this.ctx.destination);
+    try {
+      if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+    } catch {
+      /* not supported */
     }
-    this.resume();
-
-    // Playing a buffer synchronously inside the gesture is what actually unlocks iOS.
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.ctx.createBuffer(1, 1, 22050);
-    src.connect(this.ctx.destination);
-    src.start(0);
-
-    if (isIOS && !('audioSession' in navigator)) this.startKeepAlive();
-  }
-
-  resume() {
-    if (this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
-  }
-
-  /** Silent looping media element: keeps older iOS in playback mode (ignores silent switch). */
-  startKeepAlive() {
-    if (!this.keepAlive) {
-      this.keepAlive = new Audio(silentWavUrl());
-      this.keepAlive.loop = true;
-      this.keepAlive.setAttribute('playsinline', '');
+    if (this.unlocked) return;
+    this.unlocked = true;
+    for (const el of Object.values(this.players)) {
+      el.muted = true;
+      const done = () => {
+        // Skip if a real beep was requested on this element meanwhile (it unmuted it).
+        if (!el.muted) return;
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+      };
+      const p = el.play();
+      if (p && p.then) p.then(done, () => {
+        el.muted = false;
+        this.unlocked = false; // try again on the next tap
+      });
+      else done();
     }
-    this.keepAlive.play().catch(() => {});
   }
 
-  /** Release the audio session when no workout is running. */
   stop() {
-    this.keepAlive?.pause();
+    for (const el of Object.values(this.players)) el.pause();
   }
 
   setMuted(muted) {
@@ -79,82 +85,72 @@ export class Sound {
     return this.muted;
   }
 
-  beep(freq, durationMs, startOffset = 0, volume = VOLUME) {
-    if (this.muted || !this.ctx) return;
-    this.resume();
-    const t0 = this.ctx.currentTime + startOffset + 0.01;
-    const end = t0 + durationMs / 1000;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    // Triangle carries better than a pure sine on tiny speakers while staying pleasant.
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.01);
-    gain.gain.setValueAtTime(volume, Math.max(t0 + 0.01, end - 0.05));
-    gain.gain.exponentialRampToValueAtTime(0.0001, end);
-    osc.connect(gain).connect(this.master);
-    osc.start(t0);
-    osc.stop(end + 0.02);
+  play(name) {
+    if (this.muted) return;
+    const el = this.players[name];
+    el.muted = false;
+    el.currentTime = 0;
+    const p = el.play();
+    if (p && p.catch) p.catch(() => {});
   }
 
-  /** Short tick for the 3-2-1 countdown. */
   countdown() {
-    this.beep(880, 160);
+    this.play('countdown');
   }
 
-  /** Start of a work phase: high, longer tone. */
   work() {
-    this.beep(1320, 600);
+    this.play('work');
   }
 
-  /** Start of a rest phase: falling double tone. */
   rest() {
-    this.beep(988, 250);
-    this.beep(740, 400, 0.3);
+    this.play('rest');
   }
 
-  /** Workout complete: rising triple tone. */
   finish() {
-    this.beep(988, 200);
-    this.beep(1175, 200, 0.24);
-    this.beep(1568, 600, 0.48);
+    this.play('finish');
   }
 }
 
-function setPlaybackSession() {
-  try {
-    if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
-  } catch {
-    /* not supported */
+/** Mix tones into one buffer of samples in the range -1..1 (triangle waves with soft edges). */
+export function renderTones(tones) {
+  const lengthMs = Math.max(...tones.map(([, dur, off]) => off + dur)) + 20;
+  const out = new Float32Array(Math.ceil((lengthMs / 1000) * SAMPLE_RATE));
+  for (const [freq, dur, off] of tones) {
+    const start = Math.floor((off / 1000) * SAMPLE_RATE);
+    const n = Math.floor((dur / 1000) * SAMPLE_RATE);
+    const attack = 0.01 * SAMPLE_RATE;
+    const release = 0.05 * SAMPLE_RATE;
+    for (let i = 0; i < n; i++) {
+      const phase = (i * freq) / SAMPLE_RATE;
+      const tri = 4 * Math.abs(phase - Math.floor(phase + 0.5)) - 1;
+      const env = Math.min(1, i / attack, (n - i) / release);
+      out[start + i] += tri * env * VOLUME;
+    }
   }
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(-1, Math.min(1, out[i]));
+  return out;
 }
 
-let silentUrl = null;
-
-/** A 1-second silent 8 kHz mono WAV, built in memory. */
-function silentWavUrl() {
-  if (silentUrl) return silentUrl;
-  const samples = 8000;
-  const buf = new ArrayBuffer(44 + samples);
+/** Encode samples as a 16-bit mono WAV and return a blob URL. */
+function wavUrl(samples) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
   const v = new DataView(buf);
   const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
   str(0, 'RIFF');
-  v.setUint32(4, 36 + samples, true);
+  v.setUint32(4, 36 + samples.length * 2, true);
   str(8, 'WAVE');
   str(12, 'fmt ');
   v.setUint32(16, 16, true); // fmt chunk size
   v.setUint16(20, 1, true); // PCM
   v.setUint16(22, 1, true); // mono
-  v.setUint32(24, 8000, true); // sample rate
-  v.setUint32(28, 8000, true); // byte rate
-  v.setUint16(32, 1, true); // block align
-  v.setUint16(34, 8, true); // bits per sample
+  v.setUint32(24, SAMPLE_RATE, true);
+  v.setUint32(28, SAMPLE_RATE * 2, true); // byte rate
+  v.setUint16(32, 2, true); // block align
+  v.setUint16(34, 16, true); // bits per sample
   str(36, 'data');
-  v.setUint32(40, samples, true);
-  for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128); // 8-bit silence
-  silentUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-  return silentUrl;
+  v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, samples[i] * 0x7fff, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
 function readMuted() {

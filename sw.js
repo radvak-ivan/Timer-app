@@ -1,5 +1,5 @@
 // Offline support: network-first so updates show up right away, cache as fallback.
-const CACHE = 'interval-timer-v2';
+const CACHE = 'interval-timer-v3';
 const ASSETS = [
   './',
   'index.html',

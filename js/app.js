@@ -239,7 +239,6 @@ function releaseWakeLock() {
 document.addEventListener('visibilitychange', () => {
   // Wake locks are dropped when the page is hidden; re-acquire on return.
   if (document.visibilityState !== 'visible') return;
-  sound.resume();
   if (timer?.running) requestWakeLock();
 });
 
@@ -266,8 +265,8 @@ document.querySelectorAll('.mute-btn').forEach((btn) =>
   }),
 );
 
-// The OS can suspend audio (calls, notifications); any tap brings it back.
-document.addEventListener('pointerdown', () => sound.resume(), { capture: true });
+// Any tap (re)unlocks audio, in case the first unlock was refused.
+document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
 
 $('#ring-progress').style.strokeDasharray = String(RING_CIRCUMFERENCE);
 

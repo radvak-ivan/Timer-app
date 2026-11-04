@@ -58,7 +58,7 @@ and catching up after delayed ticks. They need Node 18 or later.
 index.html            Setup and workout screens
 css/styles.css        Styles (mobile-first, dark theme)
 js/timer.js           Timer engine (no DOM, unit-tested)
-js/sound.js           Beeps generated with the Web Audio API, plus the mute setting
+js/sound.js           Beeps synthesised into WAV clips and played as media, plus mute
 js/app.js             UI wiring, saved settings, wake lock, vibration
 sw.js                 Service worker for offline use
 manifest.webmanifest  Install metadata

@@ -219,6 +219,13 @@ svg path.fill {
   letter-spacing: 0.02em;
 }
 
+.version {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 #setup .total {
   margin-bottom: 24px;
 }
