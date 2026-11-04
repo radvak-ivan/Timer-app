@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#111418">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Interval Timer">
+  <meta name="description" content="Interval timer for training: work, rest and rounds with sound cues.">
+  <title>Interval Timer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Setup screen -->
+  <main id="setup" class="screen">
+    <header class="topbar">
+      <h1>Interval Timer</h1>
+      <button class="icon-btn mute-btn" type="button" aria-label="Mute sound" aria-pressed="false"></button>
+    </header>
+
+    <section class="settings" aria-label="Workout settings">
+      <div class="setting" data-key="work" data-kind="time" data-min="5" data-max="3600" data-step="5">
+        <div class="setting-label"><span class="dot dot-work"></span>Work</div>
+        <div class="stepper">
+          <button type="button" class="step" data-dir="-1" aria-label="Decrease work time">−</button>
+          <output class="value" aria-live="polite"></output>
+          <button type="button" class="step" data-dir="1" aria-label="Increase work time">+</button>
+        </div>
+      </div>
+
+      <div class="setting" data-key="rest" data-kind="time" data-min="0" data-max="3600" data-step="5">
+        <div class="setting-label"><span class="dot dot-rest"></span>Rest</div>
+        <div class="stepper">
+          <button type="button" class="step" data-dir="-1" aria-label="Decrease rest time">−</button>
+          <output class="value" aria-live="polite"></output>
+          <button type="button" class="step" data-dir="1" aria-label="Increase rest time">+</button>
+        </div>
+      </div>
+
+      <div class="setting" data-key="rounds" data-kind="count" data-min="1" data-max="99" data-step="1">
+        <div class="setting-label"><span class="dot dot-rounds"></span>Rounds</div>
+        <div class="stepper">
+          <button type="button" class="step" data-dir="-1" aria-label="Decrease rounds">−</button>
+          <output class="value" aria-live="polite"></output>
+          <button type="button" class="step" data-dir="1" aria-label="Increase rounds">+</button>
+        </div>
+      </div>
+
+      <div class="setting" data-key="prepare" data-kind="time" data-min="0" data-max="60" data-step="5">
+        <div class="setting-label"><span class="dot dot-prepare"></span>Get ready</div>
+        <div class="stepper">
+          <button type="button" class="step" data-dir="-1" aria-label="Decrease get ready time">−</button>
+          <output class="value" aria-live="polite"></output>
+          <button type="button" class="step" data-dir="1" aria-label="Increase get ready time">+</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="total">Total <strong id="total-time">0:00</strong></p>
+
+    <button id="start-btn" class="primary-btn" type="button">Start</button>
+  </main>
+
+  <!-- Running screen -->
+  <main id="run" class="screen" hidden>
+    <header class="topbar">
+      <button id="close-btn" class="icon-btn" type="button" aria-label="Stop and go back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span id="round-label" class="round-label"></span>
+      <button class="icon-btn mute-btn" type="button" aria-label="Mute sound" aria-pressed="false"></button>
+    </header>
+
+    <div class="dial">
+      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="ring-track" cx="100" cy="100" r="90"/>
+        <circle id="ring-progress" class="ring-progress" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="dial-text">
+        <div id="phase-label" class="phase-label">Work</div>
+        <div id="time-left" class="time-left" role="timer" aria-live="off">0:00</div>
+        <div class="total-left">Remaining <span id="total-left">0:00</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="reset-btn" class="icon-btn big" type="button" aria-label="Restart workout">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>
+      </button>
+      <button id="toggle-btn" class="play-btn" type="button" aria-label="Pause"></button>
+      <button id="skip-btn" class="icon-btn big" type="button" aria-label="Skip to next phase">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5l9 7-9 7zM18 5v14"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "interval-timer",
+  "version": "1.0.0",
+  "description": "Interval timer for training, built as an installable web app (PWA).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test test/*.test.js"
+  }
+}
