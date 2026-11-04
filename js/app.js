@@ -148,6 +148,8 @@ function startWorkout() {
       $('#round-label').textContent = 'Workout complete';
       releaseWakeLock();
       renderToggle();
+      // Let the finish jingle play, then release audio unless the user restarted.
+      setTimeout(() => timer?.finished && sound.stop(), 2500);
     },
   });
 
@@ -204,6 +206,7 @@ function resetRun() {
 function stopWorkout() {
   timer?.destroy();
   timer = null;
+  sound.stop();
   releaseWakeLock();
   delete document.body.dataset.phase;
   document.body.classList.remove('paused');
@@ -235,7 +238,9 @@ function releaseWakeLock() {
 
 document.addEventListener('visibilitychange', () => {
   // Wake locks are dropped when the page is hidden; re-acquire on return.
-  if (document.visibilityState === 'visible' && timer?.running) requestWakeLock();
+  if (document.visibilityState !== 'visible') return;
+  sound.resume();
+  if (timer?.running) requestWakeLock();
 });
 
 // ---------- Init ----------
@@ -255,10 +260,14 @@ $('#close-btn').addEventListener('click', stopWorkout);
 document.querySelectorAll('.mute-btn').forEach((btn) =>
   btn.addEventListener('click', () => {
     sound.unlock();
-    sound.toggleMuted();
+    // Beep on unmute so you can check the sound works and the volume is right.
+    if (!sound.toggleMuted()) sound.countdown();
     renderMute();
   }),
 );
+
+// The OS can suspend audio (calls, notifications); any tap brings it back.
+document.addEventListener('pointerdown', () => sound.resume(), { capture: true });
 
 $('#ring-progress').style.strokeDasharray = String(RING_CIRCUMFERENCE);
 

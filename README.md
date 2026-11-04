@@ -68,7 +68,10 @@ icons/                App icons
 ## Notes
 
 - Mobile browsers only allow sound after you tap something, so audio is enabled when you
-  press **Start**.
+  press **Start**. Unmuting plays a test beep so you can check the volume.
+- On iPhone, beeps play even with the ring/silent switch on. They follow the **media
+  volume** (the volume buttons while the app is open), not the ringer volume.
+- After an update, close and reopen the app (or reload the page) to get the new version.
 - If you lock the phone or switch to another app, the browser may pause the page, so beeps
   can be late or missing while it's in the background. The timer still keeps the correct
   time and catches up when you come back. Keep the app open on screen during a workout.

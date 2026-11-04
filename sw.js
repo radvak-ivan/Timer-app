@@ -1,5 +1,5 @@
-// Offline support: cache the app shell, serve cache-first, refresh in background.
-const CACHE = 'interval-timer-v1';
+// Offline support: network-first so updates show up right away, cache as fallback.
+const CACHE = 'interval-timer-v2';
 const ASSETS = [
   './',
   'index.html',
@@ -29,18 +29,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).origin !== location.origin) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((res) => {
-          if (res.ok && new URL(event.request.url).origin === location.origin) {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    }),
+    fetch(event.request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(event.request, { ignoreSearch: true })),
   );
 });
